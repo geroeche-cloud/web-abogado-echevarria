@@ -162,21 +162,142 @@
         const serie = creds.map(card).join("");
         const copia = serie.replace(/<figure class="cert-paper"/g, '<figure class="cert-paper is-dupe" aria-hidden="true"')
                            .replace(/tabindex="0"/g, 'tabindex="-1"');
-        // La duración crece con la cantidad de papeles: la velocidad se mantiene pareja
-        const segundos = Math.max(40, creds.length * 11);
         return `
           <div class="cert-group">
             <p class="cert-group-title">
               <span>Certificados de</span>
               <strong>${esc(m.name)}</strong>
             </p>
-            <div class="cert-marquee">
-              <div class="cert-row">
-                <div class="cert-rail" style="animation-duration:${segundos}s">${serie + copia}</div>
+            <div class="cert-marquee" data-cert-marquee>
+              <div class="cert-viewport">
+                <div class="cert-track">${serie + copia}</div>
               </div>
             </div>
           </div>`;
       }).join("");
+    });
+  }
+
+  /* ---------- Vitrina de certificados ----------
+     Desplazamiento continuo con requestAnimationFrame: es lo que permite que el
+     arrastre y la animación compartan la misma posición, y que al soltar el
+     movimiento siga desde donde quedó en vez de saltar. */
+  function initCertMarquee() {
+    const VELOCIDAD = 26;   // px por segundo
+    const ESPERA = 1600;    // ms sin interacción antes de retomar
+
+    $$("[data-cert-marquee]").forEach(mq => {
+      const viewport = $(".cert-viewport", mq);
+      const track = $(".cert-track", mq);
+      if (!viewport || !track || track.children.length < 2) return;
+
+      let periodo = 0;        // ancho de una serie completa (la otra es la copia)
+      let offset = 0;         // desplazamiento acumulado
+      let enPausa = false, arrastrando = false, visible = true;
+      let temporizador = null, previo = 0, raf = 0;
+      let inicioX = 0, inicioOffset = 0, recorrido = 0;
+
+      // Cuántos certificados se ven a la vez lo decide el CSS (--per).
+      // El ancho exacto se calcula acá para que no queden medios cortados.
+      function medir() {
+        const por = parseFloat(getComputedStyle(mq).getPropertyValue("--per")) || 3;
+        const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+        // clientWidth incluye el padding lateral; hay que descontarlo o las
+        // tarjetas salen más anchas de la cuenta y se ven menos de las pedidas.
+        const cs = getComputedStyle(viewport);
+        const util = viewport.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const ancho = (util - (por - 1) * gap) / por;
+        mq.style.setProperty("--cert-card", Math.max(180, Math.floor(ancho)) + "px");
+
+        // El período se mide después de fijar el ancho: es la distancia entre una
+        // tarjeta y su copia, así el bucle cierra sin salto ni medio gap de sobra.
+        const mitad = track.children.length / 2;
+        const a = track.children[0], b = track.children[mitad];
+        periodo = b ? b.offsetLeft - a.offsetLeft : track.scrollWidth / 2;
+      }
+
+      function pintar() {
+        if (periodo <= 0) return;
+        const x = ((offset % periodo) + periodo) % periodo;
+        track.style.transform = `translate3d(${x - periodo}px,0,0)`;
+      }
+
+      function frame(t) {
+        const dt = Math.min(50, t - previo) / 1000;
+        previo = t;
+        if (!enPausa && !arrastrando && visible && !reduced) offset += VELOCIDAD * dt;
+        pintar();
+        raf = requestAnimationFrame(frame);
+      }
+
+      function retomar() {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => { enPausa = false; }, ESPERA);
+      }
+      function frenar() { clearTimeout(temporizador); enPausa = true; }
+
+      viewport.addEventListener("pointerenter", frenar);
+      viewport.addEventListener("pointerleave", retomar);
+      viewport.addEventListener("focusin", frenar);
+      viewport.addEventListener("focusout", retomar);
+
+      viewport.addEventListener("pointerdown", e => {
+        if (e.button !== undefined && e.button !== 0) return;
+        arrastrando = true; recorrido = 0;
+        inicioX = e.clientX; inicioOffset = offset;
+        frenar();
+        viewport.classList.add("is-dragging");
+        try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+      viewport.addEventListener("pointermove", e => {
+        if (!arrastrando) return;
+        const d = e.clientX - inicioX;
+        recorrido = Math.max(recorrido, Math.abs(d));
+        offset = inicioOffset + d;
+      });
+      function soltar() {
+        if (!arrastrando) return;
+        arrastrando = false;
+        viewport.classList.remove("is-dragging");
+        retomar();
+      }
+      viewport.addEventListener("pointerup", soltar);
+      viewport.addEventListener("pointercancel", soltar);
+
+      // Un arrastre no debe abrir el certificado que quedó bajo el dedo
+      viewport.addEventListener("click", e => {
+        if (recorrido > 6) { e.preventDefault(); e.stopPropagation(); recorrido = 0; }
+      }, true);
+      viewport.addEventListener("dragstart", e => e.preventDefault());
+
+      // Fuera de pantalla no se anima: no se gasta batería ni cuadros
+      if ("IntersectionObserver" in window) {
+        new IntersectionObserver(([e]) => { visible = e.isIntersecting; },
+          { rootMargin: "120px" }).observe(mq);
+      }
+      document.addEventListener("visibilitychange", () => { previo = performance.now(); });
+
+      // ResizeObserver y no "resize": el ancho útil también cambia cuando aparece
+      // la barra de scroll o terminan de cargar las imágenes, sin que medie un resize.
+      let reMedir = null;
+      const recalibrar = () => {
+        clearTimeout(reMedir);
+        reMedir = setTimeout(() => { medir(); pintar(); }, 120);
+      };
+      addEventListener("resize", recalibrar);
+      addEventListener("orientationchange", recalibrar);
+      addEventListener("load", recalibrar);
+      if ("ResizeObserver" in window) {
+        try { new ResizeObserver(recalibrar).observe(viewport); } catch (_) {}
+      }
+
+      medir(); pintar();
+      // Segunda pasada: al aparecer la barra de scroll o al asentar las fuentes
+      // el ancho útil cambia, y las tarjetas quedarían con la medida vieja.
+      setTimeout(recalibrar, 400);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(recalibrar);
+      previo = performance.now();
+      raf = requestAnimationFrame(frame);
     });
   }
 
@@ -254,6 +375,7 @@
     safe(mountCredentials, "mountCredentials");
     safe(initNav, "initNav");
     safe(initAccordion, "initAccordion");
+    safe(initCertMarquee, "initCertMarquee");
     safe(initCredModal, "initCredModal");
     safe(initContactForm, "initContactForm");
     safe(initReveals, "initReveals");
