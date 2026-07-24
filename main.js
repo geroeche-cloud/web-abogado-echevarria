@@ -152,31 +152,29 @@
         </figcaption>
       </figure>`;
 
-    // Se duplica la serie para que el bucle cierre sin salto.
-    // La copia es decorativa: se oculta si el usuario pidió menos movimiento.
-    const rail = (list, rev) => {
-      const serie = list.map(card).join("");
-      const copia = serie.replace(/<figure class="cert-paper"/g, '<figure class="cert-paper is-dupe" aria-hidden="true"')
-                         .replace(/tabindex="0"/g, 'tabindex="-1"');
-      return `<div class="cert-row"><div class="cert-rail${rev ? " cert-rail--rev" : ""}">${serie + copia}</div></div>`;
-    };
-
     hosts.forEach(host => {
       if (host.children.length) return;
-      const filas = Number(host.getAttribute("data-cert-rows")) === 2 ? 2 : 1;
       host.innerHTML = data.team.map(m => {
         const creds = (m.credentials || []).filter(c => c.image);
         if (!creds.length) return "";
-        const filasHtml = filas === 2
-          ? rail(creds.filter((_, i) => i % 2 === 0), false) + rail(creds.filter((_, i) => i % 2 === 1), true)
-          : rail(creds, false);
+        // El ciclo se cierra con una copia de la serie: al llegar al final
+        // se vuelve al principio sin que se note el salto.
+        const serie = creds.map(card).join("");
+        const copia = serie.replace(/<figure class="cert-paper"/g, '<figure class="cert-paper is-dupe" aria-hidden="true"')
+                           .replace(/tabindex="0"/g, 'tabindex="-1"');
+        // La duración crece con la cantidad de papeles: la velocidad se mantiene pareja
+        const segundos = Math.max(40, creds.length * 11);
         return `
           <div class="cert-group">
             <p class="cert-group-title">
               <span>Certificados de</span>
               <strong>${esc(m.name)}</strong>
             </p>
-            <div class="cert-marquee">${filasHtml}</div>
+            <div class="cert-marquee">
+              <div class="cert-row">
+                <div class="cert-rail" style="animation-duration:${segundos}s">${serie + copia}</div>
+              </div>
+            </div>
           </div>`;
       }).join("");
     });
