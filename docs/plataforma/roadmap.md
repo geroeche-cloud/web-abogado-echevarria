@@ -35,18 +35,22 @@ probado, y ningún secreto en el repo.
 
 ---
 
-## Fase 2 — Módulo WhatsApp (triaje + agenda) 🎯 el que da valor primero
+## Fase 2 — Asistente WhatsApp "Sofía" (triaje + agenda) 🎯 el que da valor primero
 
+- **Identidad del asistente (Módulo 0):** tabla `assistants` + Sofía cargada (nombre,
+  personalidad, tono, reglas de derivación, disclaimer). El prompt del LLM se arma
+  desde acá — mismo motor, cualquier asistente futuro.
 - Número dedicado + Meta Business verificado + Cloud API conectada.
 - Webhook → router → máquina de estados de conversación.
 - FAQs por RAG desde `knowledge_base` + disclaimer legal + fallback humano.
+- **Transparencia:** Sofía se presenta como asistente virtual; no finge ser humana.
 - Agenda: chequeo de disponibilidad, evento en Calendar, confirmación al cliente,
   aviso a Nicolás, recordatorio con plantilla aprobada.
-- Todo registrado en Postgres + `audit_log`.
+- Todo registrado en Postgres + `audit_log`; primeras métricas a `metrics_daily`.
 
-**DoD:** una persona escribe, el bot responde una FAQ en el tono correcto, agenda un
-turno real que aparece en Calendar, Nicolás recibe el aviso, y al día del turno llega
-el recordatorio. Con "escribí humano" siempre disponible.
+**DoD:** Sofía responde una FAQ en su tono, se presenta como asistente virtual, agenda
+un turno real que aparece en Calendar, Nicolás recibe el aviso, y al día del turno
+llega el recordatorio. Con "escribí humano" siempre disponible.
 
 ---
 
@@ -55,60 +59,74 @@ el recordatorio. Con "escribí humano" siempre disponible.
 Ahora que sabemos qué config necesita un cliente (lo aprendimos armando la Fase 2),
 automatizamos el alta.
 
-- Formulario completo (negocio, marca, público, comunicación, archivos).
-- Webhook → crea tenant + config + carpeta Drive con estructura + base de conocimiento.
+- Formulario completo (negocio, identidad visual, comunicación, marketing, archivos).
+- Webhook → crea tenant + config + **asistente (identidad)** + carpeta Drive con la
+  estructura (Identidad/Multimedia/Documentación/Contenido/Reportes) + base de
+  conocimiento.
 - Validación de archivos y aviso de datos personales de terceros.
 
-**DoD:** completar el formulario deja un tenant nuevo 100% listo para activar módulos,
-sin tocar nada a mano.
+**DoD:** completar el formulario deja un tenant nuevo — con su asistente y sus
+carpetas — 100% listo para activar módulos, sin tocar nada a mano.
 
 ---
 
-## Fase 4 — Contenido + Visual (con humano aprobando)
+## Fase 4 — Sistema de contenido (con aprobación humana + métricas)
 
-- Pipeline semanal: análisis → propuesta de calendario → borradores (copies, CTAs,
-  ideas de reels/carruseles) → **aprobación humana** → publicación por API oficial.
+- Pipeline semanal: **investigación** (temas, FAQs reales, tendencias) → **generación**
+  (borradores: copies, CTAs, reels, carruseles) → estados
+  `borrador → en_revision → aprobado → publicado → archivado` → **publicación** por API
+  oficial.
 - Visual: plantillas de marca primero; IA para piezas puntuales.
+- **Métricas:** cada pieza publicada alimenta `metrics_daily` e `insights` (contenido
+  que rinde, temas que interesan) — siempre por tenant.
+- La aprobación se hace por mensaje ahora y por Dashboard en la Fase 5.
 
-**DoD:** cada semana se genera una propuesta que Nicolás aprueba con un clic, y lo
-aprobado se publica solo en las fechas fijadas. Nada se publica sin OK.
+**DoD:** cada semana se genera una propuesta que Nicolás aprueba, lo aprobado se
+publica solo en las fechas fijadas, y su rendimiento queda medido. Nada se publica sin
+estado `aprobado`.
 
 ---
 
-## Fase 5 — Comunidad + Reportes
+## Fase 5 — Dashboard del cliente (+ comunidad y reportes)
 
-- Comunidad: clasificación de comentarios/DMs, respuestas genéricas, detección de
+- **Dashboard** con Auth por tenant y Row Level Security: Atención, Redes, Negocio,
+  cola de **Aprobaciones** de contenido, y edición de la identidad del asistente.
+- **Comunidad:** clasificación de comentarios/DMs, respuestas genéricas, detección de
   interés → aviso a humano (sin DM automático de captación).
-- Reportes: métricas diarias acumuladas → reporte semanal en Drive + resumen.
+- **Reportes:** `metrics_daily`/`insights` → reporte semanal en Drive + resumen, y
+  visibles en el panel.
 
-**DoD:** llega un reporte semanal claro y accionable, y los comentarios/DMs quedan
-clasificados con lo importante derivado a una persona.
+**DoD:** el cliente entra a su panel, ve sólo sus datos, aprueba contenido desde ahí,
+recibe un reporte semanal accionable, y los comentarios/DMs quedan clasificados con lo
+importante derivado a una persona.
 
 ---
 
-## Fase 6 — Producto SaaS (segundo cliente)
+## Fase 6 — Escalabilidad SaaS (segundo cliente)
 
-- Onboarding self-service, panel de administración, facturación por cliente.
+- Onboarding self-service, panel de administración multi-tenant, facturación por cliente.
 - Aislar clientes grandes en contenedor dedicado si hace falta (Modelo C).
 - Documentación de operación y runbooks.
 
-**DoD:** dar de alta un segundo cliente (médico, inmobiliaria, etc.) no requiere
-escribir código nuevo: sólo completar el formulario y activar módulos.
+**DoD:** dar de alta un segundo cliente (Martina para una clínica, Laura para una
+inmobiliaria…) es **sólo configuración**: completar el formulario y activar módulos,
+sin escribir código nuevo.
 
 ---
 
 ## Orden y por qué
 
 ```
-Fase 0  Arquitectura        (pensar antes de construir)
-Fase 1  Fundaciones          (sin cimientos no hay nada)
-Fase 2  WhatsApp             (valor y plata primero → genera datos)
-Fase 3  Onboarding           (automatizar el alta con lo aprendido)
-Fase 4  Contenido + Visual   (crecer, con humano en el loop)
-Fase 5  Comunidad + Reportes (ordenar y medir)
-Fase 6  SaaS                 (segundo cliente sin reescribir)
+Fase 0  Arquitectura          (pensar antes de construir)
+Fase 1  Infraestructura        (sin cimientos no hay nada)
+Fase 2  WhatsApp "Sofía"       (valor y plata primero → genera datos)
+Fase 3  Onboarding             (automatizar el alta con lo aprendido)
+Fase 4  Contenido + métricas   (crecer, con humano aprobando)
+Fase 5  Dashboard (+ com/rep)  (que el cliente vea y apruebe)
+Fase 6  SaaS                   (segundo cliente sin reescribir)
 ```
 
 **No** arrancamos por contenido/imágenes (lo vistoso) porque sin fundaciones ni datos
-reales sería frágil y genérico. WhatsApp primero: es lo que el estudio necesita ya, y
-es lo que le da materia prima (FAQs reales, consultas) al resto.
+reales sería frágil y genérico. WhatsApp con Sofía primero: es lo que el estudio
+necesita ya, y le da materia prima (FAQs reales, consultas) al resto. El Dashboard
+llega cuando ya hay datos que mostrar y contenido que aprobar.

@@ -93,12 +93,62 @@ tiene consecuencias técnicas concretas:
 - **Drive:** ya es durable; igual documentar la estructura para poder reconstruirla.
 - **Prueba de restore.** Un backup no probado no existe. Restore de prueba trimestral.
 
-## 8. Checklist de "no arrancamos sin esto"
+## 8. Identidad del asistente: personalidad sí, engaño no
+
+El requisito de darle a cada asistente nombre y personalidad ("Sofía") es válido y
+mejora la experiencia — **pero tiene un límite legal, no sólo ético.**
+
+- **Transparencia obligatoria.** El asistente **debe identificarse como asistente
+  virtual** del estudio, no hacerse pasar por una persona humana. Hacer creer al
+  interlocutor que habla con una empleada real puede constituir una práctica engañosa
+  (defensa del consumidor) y, en un estudio jurídico, un problema deontológico. La
+  personalidad de Sofía es un tono, no una máscara.
+- **No inventa hechos ni credenciales.** Sofía no dice "soy abogada", no da un número
+  de matrícula, no afirma resultados. Su rol es comunicar y agendar.
+- **Coherencia con el disclaimer legal (§1).** La misma Sofía que es cálida y
+  resolutiva es la que aclara que no brinda asesoramiento legal. Ambas cosas conviven.
+- **Consistencia de marca ≠ suplantación.** Está bien que Sofía "sea del equipo" en
+  tono; no está bien firmar como si fuera una persona física identificable del estudio.
+
+## 9. Dashboard del cliente: aislamiento es lo primero
+
+Un panel donde cada cliente ve datos es una **superficie de fuga** nueva. El riesgo
+número uno es que un cliente vea datos de otro.
+
+- **Aislamiento por Row Level Security**, no por lógica de aplicación. Cada usuario del
+  panel está atado a un `tenant_id` y la base **rechaza** cualquier fila de otro tenant,
+  aunque la app tenga un bug. Es la diferencia entre un panel serio y un incidente.
+- **Autenticación real** (Supabase Auth u equivalente): contraseñas hasheadas, sesiones,
+  idealmente 2FA para el titular. Nada de "links mágicos" sin control.
+- **Datos personales de terceros en el panel.** El dashboard muestra consultas de las
+  personas que escribieron al estudio. Eso es dato personal: se muestra sólo al tenant
+  dueño, se minimiza lo sensible, y el acceso queda en `audit_log`.
+- **Permisos por rol** dentro del tenant (dueño vs. asistente del estudio) cuando haga
+  falta. Mínimo privilegio también acá.
+
+## 10. Métricas y "aprendizaje": nunca cruzar clientes
+
+El sistema aprende (FAQs top, horarios pico, contenido que rinde) para mejorar
+recomendaciones. **Ese aprendizaje es estrictamente por tenant.**
+
+- **Prohibido el aprendizaje cruzado por defecto.** Los datos de Abogado Neuquén no
+  alimentan las recomendaciones de otro cliente. Es separación de datos *y* ventaja
+  competitiva del cliente (sus patrones son suyos).
+- **Si algún día se quiere un aprendizaje agregado** (benchmarks del rubro), debe ser
+  con datos **anonimizados y agregados** de forma que no se pueda reidentificar a un
+  cliente ni a una persona, y idealmente con consentimiento. Hasta entonces: todo en
+  `insights` lleva `tenant_id` y no sale de ahí.
+- **La IA no memoriza entre clientes.** El contexto que se le pasa al modelo es el del
+  tenant en curso; no hay estado compartido entre conversaciones de distintos tenants.
+
+## 11. Checklist de "no arrancamos sin esto"
 
 - [ ] Número de WhatsApp **dedicado** (no el personal) + Meta Business verificado.
 - [ ] Consentimiento/disclaimer definido para el primer contacto.
+- [ ] Identidad del asistente (Sofía) definida **con** su regla de transparencia.
 - [ ] Proveedor de IA con modo sin-entrenamiento/retención mínima, elegido.
 - [ ] `.env` fuera del repo y `N8N_ENCRYPTION_KEY` respaldada.
 - [ ] Decisión tomada sobre el DNI en los certificados.
 - [ ] Flujo de borrado de datos (derecho al olvido) diseñado.
+- [ ] Row Level Security definida para datos **y** dashboard antes de exponer el panel.
 - [ ] Backups de Postgres automatizados y un restore probado.

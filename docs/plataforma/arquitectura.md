@@ -24,6 +24,12 @@
 └───────────────┬─────────────────────────────────────────────────────┘
                 │ webhooks / API
 ┌───────────────▼─────────────────────────────────────────────────────┐
+│  IDENTIDAD DEL ASISTENTE (por tenant)                               │
+│  Nombre · personalidad · tono · horarios · reglas de derivación     │
+│  Ej.: "Sofía – Abogado Neuquén"  (config, no código)               │
+└───────────────┬─────────────────────────────────────────────────────┘
+                │
+┌───────────────▼─────────────────────────────────────────────────────┐
 │  ORQUESTACIÓN — n8n (queue mode) en Docker sobre VPS                 │
 │  Workflows GENÉRICOS parametrizados por tenant_id                   │
 │  · Router de mensajes  · Triaje IA  · Agenda  · Content pipeline    │
@@ -43,6 +49,11 @@
 ┌───────▼─────────────────────────────────────────────────────────────┐
 │  SECRETOS Y OBSERVABILIDAD                                          │
 │  Vault de credenciales · Logs centralizados · Métricas · Backups   │
+└───────┬─────────────────────────────────────────────────────────────┘
+        │ lectura autenticada por tenant (RLS)
+┌───────▼─────────────────────────────────────────────────────────────┐
+│  DASHBOARD DEL CLIENTE (SaaS)                                       │
+│  Login por tenant · Atención · Redes · Negocio · Aprobar contenido  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -69,18 +80,27 @@ un futuro panel). Se puede migrar a Postgres propio en el VPS sin cambiar el mod
 Tablas núcleo (todas con `tenant_id` salvo `tenants`):
 
 - `tenants` — cliente/negocio. Rubro, estado, módulos activos (JSON de flags).
-- `tenant_config` — tono, palabras vetadas, horarios de atención, plantillas,
-  IDs de Drive/Calendar, número de WhatsApp. La "personalidad" del empleado digital.
+- `tenant_config` — horarios de atención, plantillas, IDs de Drive/Calendar, número
+  de WhatsApp, palabras vetadas. La config operativa del negocio.
+- **`assistants`** — **identidad del asistente por tenant** (ver §9). Nombre,
+  personalidad, tono, reglas de derivación, disclaimer. Ej.: "Sofía".
 - `knowledge_base` — FAQs, servicios, textos aprobados. Con embeddings para RAG.
 - `contacts` — personas que escriben (con consentimiento y origen).
 - `conversations` / `messages` — historial por canal. Base del contexto y auditoría.
 - `appointments` — turnos (espejo de Google Calendar, fuente de verdad operativa).
-- `content_items` — piezas de contenido (borrador → aprobado → publicado).
-- `metrics_daily` — métricas para reportes.
+- `content_items` — piezas de contenido con **estado** (ver §10):
+  `borrador → en_revision → aprobado → publicado → archivado`.
+- `approvals` — decisiones humanas sobre contenido (quién aprobó/rechazó, cuándo, por
+  qué). Alimenta la auditoría y el aprendizaje.
+- `metrics_daily` — métricas acumuladas por día para reportes y dashboard.
+- `insights` — aprendizajes derivados (FAQs top, horarios pico, contenido que rinde).
+  **Siempre por tenant.** Ver riesgo de aprendizaje cruzado en seguridad §11.
+- `dashboard_users` — usuarios que acceden al panel, atados a un `tenant_id`.
 - `audit_log` — **quién/qué/cuándo**. Inmutable. Clave por el tema legal.
 
 **Regla dura:** ninguna query cruza `tenant_id`. Se aplica con Row Level Security en
-Supabase/Postgres, no sólo con `WHERE`.
+Supabase/Postgres, no sólo con `WHERE`. Esto vale igual para el dashboard: un usuario
+sólo ve las filas de su tenant, garantizado por la base, no por la aplicación.
 
 ## 5. n8n en producción
 
@@ -120,3 +140,68 @@ detrás puede haber uno u otro modelo. Esto importa porque:
 - No hacemos DM masivo ni scraping que viole ToS de las plataformas.
 - No guardamos secretos en el repo ni en los workflows en texto plano.
 - No mezclamos datos entre clientes: si dudás, es un `tenant_id` nuevo.
+- No hacemos que el asistente se haga pasar por una persona humana (ver §9).
+- No usamos datos de un cliente para "entrenar" o alimentar a otro (ver seguridad §11).
+
+## 9. Identidad del asistente por tenant
+
+Cada cliente tiene **un asistente con identidad propia** — "Sofía" para Abogado
+Neuquén, "Martina" para una clínica, "Laura" para una inmobiliaria — **resuelto por
+configuración, no por código**. Es una fila en `assistants`, no un sistema nuevo.
+
+La identidad se compone de:
+
+| Campo | Ejemplo (Sofía) |
+|---|---|
+| `name` | Sofía |
+| `role` | Asistente de comunicaciones de Abogado Neuquén |
+| `personality` | Cordial, resolutiva, sobria; trato de usted |
+| `tone` | Profesional y cálido, sin tecnicismos legales |
+| `communication_style` | Frases cortas, confirma antes de agendar |
+| `business_hours` | Lu–Vi 9–18 (deriva/avisa fuera de horario) |
+| `business_info` | Datos del estudio (desde `tenant_config`) |
+| `faqs` | Referencia a `knowledge_base` |
+| `derivation_rules` | Urgencia/tema X → humano; "humano" → humano |
+| `disclaimer` | "Soy la asistente virtual del estudio; no brindo asesoramiento legal" |
+
+**Cómo se usa:** los workflows arman el *system prompt* del LLM a partir de la fila
+`assistants` del tenant + `knowledge_base` (RAG). El mismo workflow, distinto tenant,
+da una Sofía o una Martina sin tocar una línea de código.
+
+**Límite duro (transparencia):** Sofía tiene personalidad, **pero nunca finge ser una
+persona humana.** Se presenta como asistente virtual del estudio. El detalle legal de
+por qué esto es obligatorio (y no un capricho) está en seguridad §9.
+
+## 10. Estados de contenido y aprobación humana
+
+Nada sensible se publica solo. `content_items.status` es una **máquina de estados**:
+
+```
+borrador ──► en_revision ──► aprobado ──► publicado
+    │             │              │
+    └─────────────┴──────────────┴────────► archivado
+```
+
+- **borrador** — la IA generó la propuesta (copy, CTA, idea de pieza).
+- **en_revision** — le llegó al cliente (dashboard o mensaje) para decidir.
+- **aprobado** — el humano dio OK; queda listo para programarse/publicarse.
+- **publicado** — salió por la API oficial; se registra fecha y resultado.
+- **archivado** — rechazado o retirado; no se borra (queda para aprendizaje/auditoría).
+
+Cada transición humana se registra en `approvals` + `audit_log`. **Sin estado
+`aprobado`, ningún workflow publica.** Es una regla del sistema, no una convención.
+
+## 11. Dashboard del cliente (capa SaaS)
+
+Panel web donde cada cliente ve **sus** resultados y **aprueba contenido**. Secciones:
+
+- **Atención:** consultas recibidas, clasificadas, citas agendadas, seguimientos.
+- **Redes:** seguidores, alcance, interacciones, publicaciones, mejores contenidos.
+- **Negocio:** nuevos contactos, conversiones, tendencias detectadas.
+- **Aprobaciones:** cola de contenido en_revision → aprobar/rechazar.
+
+**Cómo:** lee de Postgres/Supabase con **Auth por tenant y Row Level Security** — un
+usuario sólo puede ver filas de su `tenant_id`, garantizado por la base de datos. El
+panel **no** ejecuta automatizaciones: dispara acciones (aprobar) que n8n procesa.
+Arranca simple (puede ser una app sobre Supabase) y evoluciona a producto SaaS. El
+riesgo de aislamiento del dashboard está en seguridad §10.

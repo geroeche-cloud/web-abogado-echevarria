@@ -1,7 +1,30 @@
-# Diseño de los 6 módulos
+# Diseño de los módulos
 
 Cada módulo se activa/desactiva por tenant. Acá está el diseño funcional y las
 decisiones de arquitecto — no el JSON de n8n todavía.
+
+---
+
+## Módulo 0 — Identidad del asistente (capa transversal)
+
+**Objetivo:** que cada cliente tenga su propio asistente (Sofía, Martina, Laura…)
+**por configuración**, no por código.
+
+**Qué es:** una fila en `assistants` por tenant con nombre, rol, personalidad, tono,
+estilo de comunicación, horarios, reglas de derivación y disclaimer (tabla completa en
+[`arquitectura.md`](./arquitectura.md) §9). Los workflows construyen el prompt del LLM
+a partir de esa fila + la base de conocimiento del tenant.
+
+**Ejemplo primer cliente:** *Sofía*, asistente de comunicaciones de Abogado Neuquén —
+cordial, resolutiva, sobria, trato de usted, Lu–Vi 9–18, deriva urgencias a un humano.
+
+**Decisiones de arquitecto:**
+- Es **transversal**: el mismo motor de WhatsApp, comunidad y contenido toma la
+  identidad del tenant en curso. Cambiar de cliente = cambiar de fila, nada más.
+- **Personalidad sí, engaño no.** Sofía siempre se presenta como asistente virtual;
+  no finge ser humana ni abogada (ver [`seguridad-y-legal.md`](./seguridad-y-legal.md)
+  §8). Ese límite es parte del diseño, no una restricción externa.
+- La identidad se genera en el onboarding y se puede editar desde el dashboard.
 
 ---
 
@@ -11,10 +34,14 @@ decisiones de arquitecto — no el JSON de n8n todavía.
 
 **Flujo:**
 1. Formulario (Supabase / Google Forms / typeform-like) con las secciones pedidas:
-   negocio, identidad de marca, público, comunicación, y **subida de archivos**
-   (logos, fotos, certificados, PDFs).
+   negocio, **identidad visual** (logo, colores, tipografías, manual de marca, fotos,
+   videos, material comercial), **comunicación** (tono, público, servicios,
+   diferenciales, FAQs), **marketing** (competidores, referencias, cuentas que
+   admiran, tipo de contenido deseado) y **subida de archivos**.
 2. Al enviar → webhook a n8n que:
    - crea el registro `tenants` + `tenant_config`,
+   - **crea el asistente** (`assistants`): nombre, personalidad, tono y reglas de
+     derivación a partir de las respuestas (ver Módulo 0),
    - crea en Google Drive la carpeta del cliente con la estructura estándar,
    - mueve/organiza los archivos subidos a sus subcarpetas,
    - convierte las respuestas en la **base de conocimiento** (`knowledge_base`, con
@@ -25,12 +52,22 @@ decisiones de arquitecto — no el JSON de n8n todavía.
 ```
 CLIENTES/
   <Nombre del cliente>/
-    Logos/
-    Fotos/
-    Documentos/
-    Contenido/         (borradores y piezas aprobadas)
+    Identidad/
+      Logos/
+      Colores/
+      Recursos visuales/
+    Multimedia/
+      Fotos/
+      Videos/
+    Documentación/
+      PDFs/
+      Información interna/
+    Contenido/
+      Publicaciones/
+      Historias/
+      Campañas/
     Reportes/
-    _config/           (export de la config, para reconstruir)
+    _config/           (export de la config y de la identidad del asistente)
 ```
 
 **Decisiones de arquitecto:**
@@ -93,8 +130,10 @@ notificaciones internas.
   "educativo" con una imprecisión jurídica es un problema real.
 - Reutiliza la base de conocimiento y las FAQs reales de WhatsApp → contenido que
   responde lo que la gente efectivamente pregunta.
-- Estado de cada pieza en `content_items`: `borrador → aprobado → programado →
-  publicado`.
+- Estado de cada pieza en `content_items` (máquina de estados de
+  [`arquitectura.md`](./arquitectura.md) §10): `borrador → en_revision → aprobado →
+  publicado → archivado`. **Sin `aprobado`, nada se publica.** La aprobación ocurre en
+  el Dashboard (Módulo 7).
 
 ---
 
@@ -150,20 +189,57 @@ por WhatsApp/mail).
 
 ---
 
+## Módulo 7 — Dashboard del cliente
+
+**Objetivo:** que el cliente vea sus resultados y **apruebe contenido** desde un panel.
+
+**Secciones:**
+- **Atención:** consultas recibidas, clasificadas, citas agendadas, seguimientos.
+- **Redes:** seguidores, alcance, interacciones, publicaciones, mejores contenidos.
+- **Negocio:** nuevos contactos, conversiones, tendencias detectadas.
+- **Aprobaciones:** cola de contenido `en_revision` → aprobar / rechazar (Módulo 3).
+- **Ajustes:** editar la identidad del asistente (Módulo 0) y horarios.
+
+**Decisiones de arquitecto:**
+- Lee de Postgres/Supabase con **Auth por tenant y Row Level Security** — un usuario
+  sólo ve su `tenant_id`, garantizado por la base (ver
+  [`seguridad-y-legal.md`](./seguridad-y-legal.md) §9). Es la pieza que más rápido
+  filtra datos si se hace mal: aislamiento primero, features después.
+- El panel **no ejecuta** automatizaciones: registra decisiones (aprobar, editar) que
+  n8n procesa. Separa la cara visible del motor.
+- Arranca mínimo (atención + aprobaciones) y evoluciona hacia el SaaS.
+
+---
+
+## Sistema de métricas y aprendizaje (transversal)
+
+Todos los módulos escriben a `metrics_daily`; un proceso deriva `insights` (FAQs top,
+servicios más consultados, horarios pico, contenido que rinde, temas que interesan).
+Esos insights alimentan las recomendaciones de contenido y el reporte.
+
+**Regla dura:** los insights son **por tenant y no se cruzan** entre clientes (ver
+[`seguridad-y-legal.md`](./seguridad-y-legal.md) §10). Un benchmark de rubro, si algún
+día se hace, va con datos anonimizados y agregados, no antes.
+
+---
+
 ## Cómo se encadenan
 
 ```
-Onboarding ──► define la marca y activa módulos
+Onboarding ──► crea Sofía (identidad) + marca + activa módulos
      │
-     ├─► WhatsApp ──► genera FAQs reales + turnos ──┐
+     ├─► WhatsApp (Sofía) ──► FAQs reales + turnos ─┐
      │                                              │
      ├─► Contenido ◄── usa FAQs reales              │ alimentan
-     │        │                                     │
+     │     (estados: borrador→revisión→aprobado)    │ métricas
+     │        │        ▲                            │
+     │        │        └── aprueba en el Dashboard  │
      │        └─► Visual (piezas)                   │
      ├─► Comunidad ──► más consultas ───────────────┤
      │                                              ▼
-     └────────────────────────────────────────► Reportes
+     └──────────────────────────► Métricas ──► Reportes + Dashboard
 ```
 
 El **WhatsApp** es el corazón: genera los datos que hacen bueno a todo lo demás. Por
-eso es lo primero que construimos después de las fundaciones.
+eso es lo primero que construimos después de las fundaciones. El **Dashboard** y el
+**aprendizaje** son transversales: consumen lo que los demás producen.
