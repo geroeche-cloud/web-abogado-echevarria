@@ -1,48 +1,57 @@
-# Abogados Neuquén — Estudio Jurídico
+# Abogado Neuquén — Nicolás Camilo Echevarría
 
-Landing premium de la firma **Abogados Neuquén** (representante: Nicolás Camilo Echevarría, Abogado).
-Sitio estático sin build: HTML + CSS + JavaScript puro, con GSAP para animaciones de scroll.
+Landing de **marca personal** (NO firma/estudio) del abogado Nicolás Camilo Echevarría,
+Matrícula N° 4085, Neuquén. Especialidad en Derecho Penal, atiende todas las materias.
+Sitio estático sin build: HTML + CSS + JavaScript puro, GSAP para animaciones de scroll.
 
 ## Identidad
 
-- Paleta: navy `#0E1628` / `#1E2D45` · dorado `#B8924A` (solo acento) · blanco
+- Paleta navy `#0E1628` / `#1E2D45` · dorado `#B8924A` (solo acento) · blanco
 - Tipografías: Cormorant Garamond (títulos) + Instrument Sans (cuerpo)
-- Logo: sello NEUQUÉN (balanza + laurel + texto) — favicon, intro, nav, footer y moneda giratoria
+- Logo: sello NEUQUÉN (balanza + laurel) en favicon / intro / nav / footer
+- Voz de copy: **plural** ("Brindamos, Acompañamos, Nos especializamos") aunque hay un solo abogado
+- **Nunca** usar "firma / estudio / equipo / socios / Dr." — es marca personal
 
-## Estructura
+## Estructura (7 bloques, lectura 2–4 min)
 
 ```
-index.html      ← página única (8 bloques: hero, áreas, por qué, estudio,
-                   banda de poder con balanza interactiva, equipo, proceso, contacto, footer)
-styles.css      ← design system por capas (tokens → secciones → materiales → lujo en movimiento)
-main.js         ← IIFE con mounts data-driven + animaciones (polvo de oro, tilt, balanza, etc.)
-lib/manifest.js ← DATOS: contacto, áreas, equipo, proceso  ➜  editar acá para escalar
-assets/img/     ← hero.jpg (torre de cristal, CC0), estudio-bg.jpg (columnas, CC0),
-                   dr-echevarria.jpg (foto del representante), favicon.svg (sello)
-vercel.json     ← deploy estático (framework null, sin build)
-.htaccess       ← solo para hosting Apache (Hostinger); Vercel lo ignora
+1 Hero          ← retrato real (nicolas.jpg) + posicionamiento + CTAs
+2 Franja confianza (matrícula, especialidad, diplomas)
+3 Perfil profesional (about del abogado, stats, highlights) — voz plural
+4 Áreas         ← Penal DESTACADO con 6 sub-materias + 5 áreas secundarias
+5 Credenciales  ← 10 certificados reales; tarjetas → modal con PDF (assets/certs/)
+6 Proceso       ← 5 pasos con viga de oro que se dibuja al scroll
+7 Contacto      ← formulario + WhatsApp + footer
 ```
+
+## Archivos
+
+```
+index.html       lib/manifest.js (DATOS: contacto, criminal, areas, credentials, process)
+styles.css       main.js (mounts + animaciones + modal credenciales)
+assets/img/      nicolas.jpg (retrato), favicon.svg (sello)
+assets/certs/    10 PDFs de certificados/diplomas
+vercel.json      .htaccess (solo Apache; Vercel lo ignora)
+```
+
+Fuentes originales del cliente: `../foto profesional editada nicolas.png`,
+`../nuevo contenido/` (CV + ZIP de certificados), `../contenido/` (foto edificio judicial).
 
 ## Cómo escalar
 
-- **Agregar un abogado**: sumar objeto en `team` dentro de `lib/manifest.js` (+ su foto en assets/img).
-- **Agregar un área**: sumar objeto en `practiceAreas` (usar numeración romana y un glyph existente).
-- Tras editar CSS/JS, **bumpear `?v=`** en `index.html` para invalidar caché.
+- Agregar credencial/área/paso = editar `lib/manifest.js`.
+- Tras editar CSS/JS, bumpear `?v=` en `index.html`.
 
-## Pipeline (ya configurado)
+## Pipeline (configurado)
 
 ```
-editar → git commit → git push  →  GitHub (geroeche-cloud/web-abogado-echevarria)
-                                    → Vercel auto-deploy (proyecto web-abogado-echevarria)
-                                    → https://web-abogado-echevarria.vercel.app
+git commit → git push → GitHub (geroeche-cloud/web-abogado-echevarria)
+           → Vercel auto-deploy → https://web-abogado-echevarria.vercel.app
 ```
 
-## Pendientes conocidos
+## Pendiente
 
-- **Dominio neuquenabogados.com** (Porkbun): requiere registro TXT `_vercel` para verificar
-  (el dominio quedó vinculado a otra cuenta de Vercel; ver instrucciones en la sesión) y
-  A `76.76.21.21` + CNAME www → valor que indique Vercel en el panel del proyecto.
-- Si el cliente entrega el **logo PNG original**, guardarlo como `assets/img/logo.png`
-  y reemplazar los SVG vectoriales del sello.
-- Hay una **foto real del edificio judicial de Neuquén** en `../contenido/` disponible
-  para reemplazar fondos por material 100% local.
+- Dominio **neuquenabogados.com** (Porkbun): requiere TXT `_vercel` (verificación) +
+  A `76.76.21.21` + CNAME www → valor del panel de Vercel. Está vinculado a otra cuenta.
+- Si el cliente da el **logo PNG original**, guardarlo como `assets/img/logo.png` y
+  reemplazar los SVG del sello.
