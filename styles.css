@@ -118,13 +118,6 @@ h1,h2,h3,h4 { font-family: var(--serif); font-weight: 600; line-height: 1.15; co
 .hero-points li::before { content: ""; width: 6px; height: 6px; margin-top: .58rem; background: var(--gold); flex-shrink: 0; transform: rotate(45deg); }
 .hero-panel .btn { width: 100%; }
 
-/* ---------- Franja de datos ---------- */
-.facts { background: var(--paper-2); border-block: 1px solid var(--line); }
-.facts-inner { display: grid; grid-template-columns: repeat(2,1fr); gap: 1.5rem; padding-block: 2rem; text-align: center; }
-@media (min-width: 800px) { .facts-inner { grid-template-columns: repeat(4,1fr); } }
-.fact strong { display: block; font-family: var(--serif); font-size: clamp(1.5rem,3vw,2.1rem); color: var(--gold); }
-.fact span { display: block; margin-top: .3rem; font-size: .76rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
-
 /* ---------- Grid de tarjetas (áreas resumen / credenciales) ---------- */
 .card-grid { margin-top: 2.6rem; display: grid; gap: 1.3rem; grid-template-columns: 1fr; }
 @media (min-width: 620px) { .card-grid { grid-template-columns: 1fr 1fr; } }
