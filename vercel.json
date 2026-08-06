@@ -5,5 +5,18 @@
   "installCommand": null,
   "outputDirectory": ".",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/nosotros", "destination": "/equipo", "permanent": true },
+    { "source": "/quienes-somos", "destination": "/equipo", "permanent": true },
+    { "source": "/book-online", "destination": "/contacto", "permanent": true },
+    { "source": "/reserva", "destination": "/contacto", "permanent": true },
+    { "source": "/reservas", "destination": "/contacto", "permanent": true },
+    { "source": "/servicios", "destination": "/areas-de-practica", "permanent": true },
+    { "source": "/service-page/:path*", "destination": "/areas-de-practica", "permanent": true },
+    { "source": "/services", "destination": "/areas-de-practica", "permanent": true },
+    { "source": "/inicio", "destination": "/", "permanent": true },
+    { "source": "/home", "destination": "/", "permanent": true },
+    { "source": "/index", "destination": "/", "permanent": true }
+  ]
 }
