@@ -301,3 +301,23 @@ h1,h2,h3,h4 { font-family: var(--serif); font-weight: 600; line-height: 1.15; co
 
 /* ---------- Textura jurídica sutil ---------- */
 .section--alt { background-image: repeating-linear-gradient(0deg, rgba(26,32,48,.022) 0 1px, transparent 1px 44px); }
+
+
+/* ---------- FAQ (especialidades) ---------- */
+.faq { margin-top: 2.2rem; border-top: 1px solid var(--line); }
+.faq-item { border-bottom: 1px solid var(--line); }
+.faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 0; text-align: left; font-family: var(--serif); font-size: clamp(1.1rem,2vw,1.3rem); font-weight: 600; color: var(--ink); }
+.faq-q:hover { color: var(--gold); }
+.faq-ico { position: relative; width: 16px; height: 16px; flex-shrink: 0; }
+.faq-ico::before,.faq-ico::after { content:""; position:absolute; background: var(--gold); transition: transform .35s var(--ease), opacity .3s; }
+.faq-ico::before { left:0; right:0; top:50%; height:2px; transform: translateY(-50%); }
+.faq-ico::after { top:0; bottom:0; left:50%; width:2px; transform: translateX(-50%); }
+.faq-item[data-open="true"] .faq-ico::after { transform: translateX(-50%) rotate(90deg); opacity:0; }
+.faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s var(--ease); }
+.faq-item[data-open="true"] .faq-a { grid-template-rows: 1fr; }
+.faq-a-inner { overflow: hidden; }
+.faq-a p { padding-bottom: 1.2rem; font-size: 1rem; max-width: 60rem; }
+/* Enlaces a otras areas */
+.related-areas { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .8rem; }
+.related-areas a { display: inline-flex; padding: .7rem 1.2rem; border: 1px solid var(--line-gold); border-radius: 2px; font-weight: 600; font-size: .9rem; color: var(--ink); transition: background-color .3s, color .3s, border-color .3s; }
+.related-areas a:hover { background: var(--gold); color: #fff; border-color: var(--gold); }

@@ -87,6 +87,18 @@
     });
   }
 
+  /* ---------- FAQ (páginas de especialidad) ---------- */
+  function initFaq() {
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("[data-faq-toggle]");
+      if (!btn) return;
+      const item = btn.closest(".faq-item");
+      const open = item.dataset.open === "true";
+      item.dataset.open = String(!open);
+      btn.setAttribute("aria-expanded", String(!open));
+    });
+  }
+
   /* ---------- Resumen de áreas (home) ---------- */
   function mountAreasSummary() {
     const t = $("[data-areas-summary]");
@@ -375,6 +387,7 @@
     safe(mountCredentials, "mountCredentials");
     safe(initNav, "initNav");
     safe(initAccordion, "initAccordion");
+    safe(initFaq, "initFaq");
     safe(initCertMarquee, "initCertMarquee");
     safe(initCredModal, "initCredModal");
     safe(initContactForm, "initContactForm");
