@@ -7,16 +7,16 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/nosotros", "destination": "/equipo", "permanent": true },
-    { "source": "/quienes-somos", "destination": "/equipo", "permanent": true },
-    { "source": "/book-online", "destination": "/contacto", "permanent": true },
-    { "source": "/reserva", "destination": "/contacto", "permanent": true },
-    { "source": "/reservas", "destination": "/contacto", "permanent": true },
-    { "source": "/servicios", "destination": "/areas-de-practica", "permanent": true },
-    { "source": "/service-page/:path*", "destination": "/areas-de-practica", "permanent": true },
-    { "source": "/services", "destination": "/areas-de-practica", "permanent": true },
-    { "source": "/inicio", "destination": "/", "permanent": true },
-    { "source": "/home", "destination": "/", "permanent": true },
-    { "source": "/index", "destination": "/", "permanent": true }
+    { "source": "/nosotros", "destination": "/equipo", "statusCode": 301 },
+    { "source": "/quienes-somos", "destination": "/equipo", "statusCode": 301 },
+    { "source": "/book-online", "destination": "/contacto", "statusCode": 301 },
+    { "source": "/reserva", "destination": "/contacto", "statusCode": 301 },
+    { "source": "/reservas", "destination": "/contacto", "statusCode": 301 },
+    { "source": "/servicios", "destination": "/areas-de-practica", "statusCode": 301 },
+    { "source": "/service-page/:path*", "destination": "/areas-de-practica", "statusCode": 301 },
+    { "source": "/services", "destination": "/areas-de-practica", "statusCode": 301 },
+    { "source": "/inicio", "destination": "/", "statusCode": 301 },
+    { "source": "/home", "destination": "/", "statusCode": 301 },
+    { "source": "/index", "destination": "/", "statusCode": 301 }
   ]
 }
